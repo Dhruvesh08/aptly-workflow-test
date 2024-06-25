@@ -1,0 +1,30 @@
+name: Cross Compile
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        override: true
+
+    - name: Install cross
+      run: cargo install cross
+
+    - name: Cross compile
+      run: cross build --target aarch64-unknown-linux-gnu
+
+    - name: Print logs
+      run: cat target/aarch64-unknown-linux-gnu/debug/build/*/output
