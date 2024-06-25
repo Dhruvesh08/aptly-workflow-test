@@ -2,5 +2,9 @@
 name = "hello-mecha"
 version = "0.1.0"
 edition = "2021"
+description = "A simple hello world example for Mecha"
+license = "MIT"
+authors = ["Dhruvesh <dhruvesh@gmail.com>"]
 
 [dependencies]
+

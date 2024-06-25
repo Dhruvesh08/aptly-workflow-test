@@ -1,10 +1,14 @@
-name: Cross Compile
+name: Build and Publish
 
 on:
   push:
     branches: [ main ]
   pull_request:
     branches: [ main ]
+
+env:
+  S3_REPO: s3:debian.mecha.build
+  URL: http://localhost
 
 jobs:
   build:
@@ -20,11 +24,35 @@ jobs:
         toolchain: stable
         override: true
 
-    - name: Install cross
-      run: cargo install cross
+    - name: Install cargo-deb
+      run: cargo install cargo-deb
 
-    - name: Cross compile
-      run: cross build --target aarch64-unknown-linux-gnu
+    - name: Build
+      run: cargo build --release
 
-    - name: Print logs
-      run: cat target/aarch64-unknown-linux-gnu/debug/build/*/output
+    - name: Generate .deb package
+      run: cargo deb --no-build
+
+    - name: List output
+      run: |
+        echo "Listing output:"
+        ls -l target/debian
+
+    - name: Add file to file system and local repo
+      run: |
+        FILENAME=$(ls target/debian/*.deb)
+        BASENAME=$(basename $FILENAME)
+        curl -F file=@$FILENAME ${{ env.URL }}/api/files/$BASENAME
+        curl -X POST ${{ env.URL }}/api/repos/mechanix-debian-repo/file/$BASENAME
+
+    - name: Update local repo
+      run: |
+        curl -X PUT -H 'Content-Type: application/json' --data '{"Signing": {"Skip":true}}' ${{ env.URL }}/api/publish/:./apollo
+
+    - name: Publish updated repo to s3
+      run: |
+        curl -X PUT -H 'Content-Type: application/json' --data '{
+          "Sources": [{"Name": "mechanix-debian-repo"}],
+          "Architectures": ["arm64", "amd64"],
+          "Signing": {"Skip":true}
+        }' ${{ env.URL }}/api/publish/${{ env.S3_REPO }}:/apollo
